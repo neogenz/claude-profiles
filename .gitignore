@@ -1,0 +1,17 @@
+/build/
+/work/
+/outputs/
+*.app/
+__pycache__/
+*.py[cod]
+.DS_Store
+.env
+.env.*
+!.env.example
+.claude/
+.claude-*/
+.claude.json
+settings.json
+settings.local.json
+profile-launcher.json
+*.log
