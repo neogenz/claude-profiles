@@ -53,7 +53,7 @@ Le profil **Personnel** garde ses emplacements existants. Le moteur et le lien P
 
 ### Configuration commune
 
-Une copie initiale des réglages, instructions, skills, agents, commandes, règles, styles et définitions MCP est créée depuis le profil personnel. Avec la synchronisation activée, cette copie est actualisée au démarrage d’une nouvelle instance. Afficher une instance déjà ouverte ne la synchronise pas. La synchronisation manuelle exige de fermer cette instance.
+Une copie initiale des réglages, skills, agents, commandes, règles, styles et définitions MCP est créée depuis le profil personnel. `~/.claude/CLAUDE.md` n’est pas copié : Claude Code le lit déjà comme instructions d’un dossier parent pour tout projet situé dans le dossier personnel, et une copie le chargerait deux fois. Une ancienne copie identique est supprimée à la synchronisation ; un `CLAUDE.md` propre au profil est conservé. Avec la synchronisation activée, cette copie est actualisée au démarrage d’une nouvelle instance. Afficher une instance déjà ouverte ne la synchronise pas. La synchronisation manuelle exige de fermer cette instance.
 
 Les fichiers de même nom sont remplacés ; les fichiers supplémentaires ne sont pas supprimés. Modifiez la source commune via le configurateur, ou désactivez la synchronisation avant de personnaliser les copies. Réactiver la synchronisation remplace les modifications locales correspondantes lors de son prochain passage.
 

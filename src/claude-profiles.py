@@ -70,7 +70,14 @@ def sync(code):
             if k.upper() != 'ANTHROPIC_CUSTOM_HEADERS'
             and not any(s in k.upper() for s in ('TOKEN','SECRET','PASSWORD','API_KEY','AUTH','CONFIG_DIR'))}
         write_json(code/name,settings)
-    for name in ('CLAUDE.md','RTK.original.md'):
+    # Claude Code already reads ~/.claude/CLAUDE.md as a parent-folder instruction file for
+    # every project under the home folder, so a profile copy loads the same instructions twice.
+    instructions=code/'CLAUDE.md'
+    if instructions.is_symlink(): raise ValueError('Lien inattendu : CLAUDE.md')
+    if (source/'CLAUDE.md').is_file() and instructions.is_file() \
+            and instructions.read_bytes()==(source/'CLAUDE.md').read_bytes():
+        instructions.unlink()
+    for name in ('RTK.original.md',):
         if (source/name).is_file():
             if (code/name).is_symlink(): raise ValueError('Lien inattendu : '+name)
             shutil.copyfile(source/name,code/name)
