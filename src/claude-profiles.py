@@ -72,11 +72,10 @@ def sync(code):
         write_json(code/name,settings)
     # Claude Code already reads ~/.claude/CLAUDE.md as a parent-folder instruction file for
     # every project under the home folder, so a profile copy loads the same instructions twice.
+    # Earlier syncs overwrote this file, so in a shared profile it is always a (possibly stale) copy.
     instructions=code/'CLAUDE.md'
     if instructions.is_symlink(): raise ValueError('Lien inattendu : CLAUDE.md')
-    if (source/'CLAUDE.md').is_file() and instructions.is_file() \
-            and instructions.read_bytes()==(source/'CLAUDE.md').read_bytes():
-        instructions.unlink()
+    instructions.unlink(missing_ok=True)
     for name in ('RTK.original.md',):
         if (source/name).is_file():
             if (code/name).is_symlink(): raise ValueError('Lien inattendu : '+name)

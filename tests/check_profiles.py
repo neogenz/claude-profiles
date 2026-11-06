@@ -51,13 +51,9 @@ with patch.object(Path, 'home', return_value=home), patch.object(p, 'ROOT', home
     assert local['hooks'] == {'SessionStart': []}
     assert (code / 'output-styles/concise.md').read_text() == 'style'
     assert not (code / 'CLAUDE.md').exists()
-    (code / 'CLAUDE.md').write_text('instructions')
+    (code / 'CLAUDE.md').write_text('outdated instructions')
     p.sync(code)
-    assert not (code / 'CLAUDE.md').exists(), 'A stale copy of the shared instructions should be removed'
-    (code / 'CLAUDE.md').write_text('profile-specific')
-    p.sync(code)
-    assert (code / 'CLAUDE.md').read_text() == 'profile-specific'
-    (code / 'CLAUDE.md').unlink()
+    assert not (code / 'CLAUDE.md').exists(), 'A copy left by an earlier sync should be removed, even if outdated'
     assert 'oauthAccount' not in json.loads((code / '.claude.json').read_text())
     settings['enabledPlugins'] = {'cla-only': True}
     (code / 'settings.json').write_text(json.dumps(settings))
