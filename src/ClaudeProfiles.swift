@@ -182,13 +182,11 @@ struct ProfilesView: View {
                         .buttonStyle(.borderedProminent).controlSize(.large)
                 }
                 if profile.managed { syncCard(profile) } else { sourceCard }
-                VStack(alignment: .leading, spacing: 8) {
-                    caption("Dans le Finder")
-                    HStack(spacing: 18) {
-                        place("Dossier Code", profile.code)
-                        place("Données Desktop", profile.data)
-                        place(profile.managed ? "Raccourci" : "Application", profile.app, reveal: true)
-                    }
+                VStack(alignment: .leading, spacing: 10) {
+                    caption("Emplacements")
+                    place("Code", profile.code)
+                    place("Desktop", profile.data)
+                    place(profile.managed ? "Raccourci" : "Application", profile.app, reveal: true)
                 }
             }
             .padding(28).frame(maxWidth: 640, alignment: .leading)
@@ -219,12 +217,15 @@ struct ProfilesView: View {
     private var sourceCard: some View {
         GroupBox {
             VStack(alignment: .leading, spacing: 12) {
-                Text("Configuration commune").font(.headline)
-                Text("Les profils synchronisés la reprennent à leur prochaine ouverture.")
-                    .font(.callout).foregroundStyle(.secondary)
+                Text("Partagé avec vos autres profils").font(.headline)
+                let synced = model.profiles.filter { $0.managed && $0.shared }.map(\.name)
+                if !synced.isEmpty {
+                    Text("Utilisé aussi par " + synced.joined(separator: ", ") + ".")
+                        .font(.callout).foregroundStyle(.secondary)
+                }
                 HStack {
-                    Button("Instructions") { model.open(personalCode + "/CLAUDE.md", edit: true) }
-                    Button("Réglages") { model.open(personalCode + "/settings.json", edit: true) }
+                    Button("Modifier CLAUDE.md") { model.open(personalCode + "/CLAUDE.md", edit: true) }
+                    Button("Modifier settings.json") { model.open(personalCode + "/settings.json", edit: true) }
                 }
             }.frame(maxWidth: .infinity, alignment: .leading).padding(10)
         }
@@ -258,9 +259,9 @@ struct ProfilesView: View {
 
     // Mirrors sync() in claude-profiles.py: keep both lists in step with what it copies and skips.
     private func sharingSummary(shared: Bool) -> some View {
-        let synced = ["Réglages", "Skills et commandes", "Serveurs MCP"]
+        let synced = ["settings.json", "Skills, agents et commandes", "Serveurs MCP globaux"]
         return HStack(alignment: .top, spacing: 24) {
-            column("Commun", ["Instructions"] + (shared ? synced : []))
+            column("Commun", ["CLAUDE.md"] + (shared ? synced : []))
             column("Propre à ce profil", ["Compte Claude", "Plugins", "Historique", "Clés d’API"] + (shared ? [] : synced))
         }
     }
@@ -288,15 +289,21 @@ struct ProfilesView: View {
     }
 
     private func place(_ title: String, _ path: String, reveal: Bool = false) -> some View {
-        Button {
-            if reveal { NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)]) }
-            else { model.open(path) }
-        } label: { Label(title, systemImage: "folder") }
-            .buttonStyle(.link)
-            .help(path)
-            .contextMenu {
-                Button("Copier le chemin") { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(path, forType: .string) }
-            }
+        HStack(spacing: 12) {
+            Text(title).foregroundStyle(.secondary).frame(width: 78, alignment: .leading)
+            Text((path as NSString).abbreviatingWithTildeInPath)
+                .font(.system(.callout, design: .monospaced)).textSelection(.enabled)
+                .lineLimit(1).truncationMode(.middle)
+            Spacer(minLength: 8)
+            Button {
+                NSPasteboard.general.clearContents(); NSPasteboard.general.setString(path, forType: .string)
+                model.notice = "Chemin copié : " + path
+            } label: { Image(systemName: "doc.on.doc") }.help("Copier le chemin")
+            Button {
+                if reveal { NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)]) }
+                else { model.open(path) }
+            } label: { Image(systemName: "folder") }.help("Afficher dans le Finder")
+        }.buttonStyle(.borderless)
     }
 }
 
