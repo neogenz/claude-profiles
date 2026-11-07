@@ -260,21 +260,28 @@ struct ProfilesView: View {
     private func sharingSummary(shared: Bool) -> some View {
         HStack(alignment: .top, spacing: 24) {
             VStack(alignment: .leading, spacing: 8) {
-                Text(shared ? "Copié depuis ~/.claude à chaque lancement" : "Copié une seule fois, à la création")
-                    .font(.subheadline.bold())
-                bullet("Réglages : settings.json et settings.local.json, hooks et barre d’état compris")
-                bullet("Skills, agents, commandes, règles et styles (ajouts seulement : un fichier retiré de ~/.claude reste dans le profil)")
-                bullet("Serveurs MCP globaux de ~/.claude.json, avec leurs éventuels identifiants de service")
-                Text("Lu directement, jamais copié").font(.subheadline.bold()).padding(.top, 4)
-                bullet("Instructions ~/.claude/CLAUDE.md, pour tout projet situé dans votre dossier personnel")
+                Text("Commun avec Personnel").font(.subheadline.bold())
+                bullet("Instructions (CLAUDE.md)")
+                if shared {
+                    bullet("Réglages, hooks et barre d’état")
+                    bullet("Skills, agents, commandes, règles et styles")
+                    bullet("Serveurs MCP globaux")
+                }
+                Text(shared
+                     ? "Modifiez-les dans Personnel. Les instructions s’appliquent tout de suite, le reste au prochain lancement de ce profil."
+                     : "Modifiez-les dans Personnel : elles s’appliquent tout de suite.")
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }.frame(maxWidth: .infinity, alignment: .leading)
             VStack(alignment: .leading, spacing: 8) {
                 Text("Propre à ce profil").font(.subheadline.bold())
-                bullet("Compte Claude connecté et données de l’application Desktop")
-                bullet("Plugins et marketplaces installés")
-                bullet("Historique, sessions et mémoire des projets")
-                bullet("Choix par projet : serveurs MCP activés, dossiers approuvés")
-                bullet("Secrets jamais copiés : apiKeyHelper et variables contenant TOKEN, SECRET, PASSWORD, API_KEY ou AUTH")
+                bullet("Compte Claude connecté")
+                bullet("Plugins et marketplaces")
+                bullet("Historique, sessions et mémoire")
+                bullet("MCP activés et dossiers approuvés, par projet")
+                bullet("Clés et jetons d’API (jamais copiés)")
+                if !shared {
+                    bullet("Réglages, skills et serveurs MCP : repris de Personnel à la création, puis indépendants")
+                }
             }.frame(maxWidth: .infinity, alignment: .leading)
         }
     }
