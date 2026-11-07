@@ -41,7 +41,7 @@ Pour mettre le gestionnaire à jour, fermez **Profils Claude**, récupérez le c
 
 ## Utilisation
 
-Cliquez sur **Ajouter un profil**, donnez un nom en minuscules, puis ouvrez Claude et connectez le compte souhaité. Le nom du profil est un repère local, pas une preuve de l’identité connectée. Vérifiez le compte dans Claude et dans l’onglet Code.
+Cliquez sur **+** (Nouveau profil), donnez un nom en minuscules, puis ouvrez Claude et connectez le compte souhaité. Le nom du profil est un repère local, pas une preuve de l’identité connectée. Vérifiez le compte dans Claude et dans l’onglet Code.
 
 Emplacements créés pour un profil `travail` :
 
@@ -53,7 +53,7 @@ Le profil **Personnel** garde ses emplacements existants. Le moteur et le lien P
 
 ### Configuration commune
 
-Une copie initiale des réglages, skills, agents, commandes, règles, styles et définitions MCP est créée depuis le profil personnel. `~/.claude/CLAUDE.md` n’est pas copié : Claude Code le lit déjà comme instructions d’un dossier parent pour tout projet situé dans le dossier personnel, et une copie le chargerait deux fois. La copie laissée par une ancienne version est supprimée à la synchronisation, même si elle est devenue obsolète. Un profil en configuration indépendante n’est jamais synchronisé et garde son propre `CLAUDE.md`. Avec la synchronisation activée, cette copie est actualisée au démarrage d’une nouvelle instance. Afficher une instance déjà ouverte ne la synchronise pas. La synchronisation manuelle exige de fermer cette instance.
+Une copie initiale des réglages, skills, agents, commandes, règles, styles et définitions MCP est créée depuis le profil personnel. `~/.claude/CLAUDE.md` n’est pas copié : Claude Code le lit déjà comme instructions d’un dossier parent pour tout projet situé dans le dossier personnel, et une copie le chargerait deux fois. La copie laissée par une ancienne version est supprimée à la synchronisation, même si elle est devenue obsolète. Un profil en configuration indépendante n’est jamais synchronisé et garde son propre `CLAUDE.md`. Avec la synchronisation activée, cette copie est actualisée au démarrage d’une nouvelle instance. Afficher une instance déjà ouverte ne la synchronise pas. Pour synchroniser sans ouvrir Claude, instance fermée : `claude-profiles.py sync <profil>`.
 
 Les fichiers de même nom sont remplacés ; les fichiers supplémentaires ne sont pas supprimés. Modifiez la source commune via le configurateur, ou désactivez la synchronisation avant de personnaliser les copies. Réactiver la synchronisation remplace les modifications locales correspondantes lors de son prochain passage.
 

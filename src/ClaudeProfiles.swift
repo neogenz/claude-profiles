@@ -108,112 +108,48 @@ struct ProfilesView: View {
     @State private var confirmSharing = false
     private var selected: Profile? { model.profiles.first { $0.id == model.selection } }
     private var validName: Bool { newName.range(of: "^[a-z][a-z0-9-]{0,30}$", options: .regularExpression) != nil }
+    private var nameTaken: Bool { model.profiles.contains { $0.id == newName } }
     private var personalCode: String { FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".claude").path }
 
     var body: some View {
         NavigationSplitView {
             List(selection: $model.selection) {
-                Section("Vos profils") {
-                    ForEach(model.profiles) { profile in
-                        HStack(spacing: 10) {
-                            Image(systemName: profile.managed ? "person.crop.square" : "house")
-                                .foregroundStyle(profile.managed ? Color.accentColor : .secondary)
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(profile.name).font(.headline)
-                                Text(profile.managed ? (profile.shared ? "Configuration commune" : "Sans synchronisation") : "Configuration source")
-                                    .font(.caption).foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            if profile.pid != nil { Circle().fill(.green).frame(width: 7, height: 7).help("Instance ouverte") }
-                        }.padding(.vertical, 5).tag(profile.id)
-                    }
+                ForEach(model.profiles) { profile in
+                    HStack(spacing: 10) {
+                        Image(systemName: profile.managed ? "person.crop.circle" : "house")
+                            .foregroundStyle(profile.managed ? Color.accentColor : .secondary)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(profile.name)
+                            Text(profile.managed ? (profile.shared ? "Synchronisé" : "Indépendant") : "Source commune")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        if profile.pid != nil { Circle().fill(.green).frame(width: 7, height: 7).help("Ouvert") }
+                    }.padding(.vertical, 4).tag(profile.id)
                 }
             }
-            .navigationSplitViewColumnWidth(min: 220, ideal: 245)
+            .navigationSplitViewColumnWidth(min: 190, ideal: 210)
         } detail: {
             if let profile = selected {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 22) {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text(profile.name).font(.largeTitle.bold())
-                                Text(profile.pid == nil ? "Instance fermée" : "Instance ouverte")
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            Button(profile.pid == nil ? "Ouvrir Claude" : "Afficher Claude") { model.launch(profile) }
-                                .buttonStyle(.borderedProminent).controlSize(.large)
-                        }
-                        GroupBox {
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("Configuration").font(.headline)
-                                if profile.managed {
-                                    Toggle("Actualiser depuis le profil personnel au lancement", isOn: Binding(
-                                        get: { profile.shared },
-                                        set: { shared in
-                                            if shared { confirmSharing = true }
-                                            else { model.change(["configure", profile.id, "--independent"], message: "Synchronisation désactivée. Les fichiers actuels sont conservés.") }
-                                        }))
-                                    if profile.shared {
-                                        Button("Synchroniser maintenant") {
-                                            model.change(["sync", profile.id], message: "Configuration commune synchronisée.")
-                                        }.disabled(profile.pid != nil)
-                                        if profile.pid != nil { Text("Quittez cette instance Claude pour synchroniser.").font(.caption).foregroundStyle(.secondary) }
-                                    }
-                                } else {
-                                    Text("Source des profils synchronisés. Les modifications faites ici seront reprises à leur prochain lancement.")
-                                        .foregroundStyle(.secondary)
-                                }
-                                let config = profile.shared ? personalCode : profile.code
-                                HStack {
-                                    Button(profile.shared ? "Réglages communs" : "Réglages JSON") { model.open(config + "/settings.json", edit: true) }
-                                    Button("Instructions communes (CLAUDE.md)") { model.open(personalCode + "/CLAUDE.md", edit: true) }
-                                    Button("Dossier de configuration") { model.open(config) }
-                                }
-                                if profile.shared { Text("Éditez la source commune ici : les copies du profil sont écrasées lors de la synchronisation.").font(.caption).foregroundStyle(.secondary) }
-                            }.frame(maxWidth: .infinity, alignment: .leading).padding(10)
-                        }
-                        if profile.managed {
-                            GroupBox {
-                                VStack(alignment: .leading, spacing: 12) {
-                                    Text("Partagé ou propre à ce profil").font(.headline)
-                                    sharingSummary(shared: profile.shared)
-                                }.frame(maxWidth: .infinity, alignment: .leading).padding(10)
-                            }
-                        }
-                        GroupBox {
-                            VStack(alignment: .leading, spacing: 16) {
-                                Text("Emplacements").font(.headline)
-                                pathRow("Claude Code", profile.code)
-                                Divider()
-                                pathRow("Données Desktop", profile.data)
-                                Divider()
-                                pathRow(profile.managed ? "Raccourci" : "Application", profile.app, reveal: true)
-                            }.padding(10)
-                        }
-                        if profile.managed {
-                            Text("Le nom est un repère local, pas une identité de compte. Vérifiez le compte connecté dans Claude. Les plugins s’installent dans chaque profil.")
-                                .font(.callout).foregroundStyle(.secondary)
-                        }
-                    }.padding(28).frame(maxWidth: 920, alignment: .leading)
-                }.disabled(model.busy)
+                detail(profile)
             } else {
-                Text(model.busy ? "Chargement des profils…" : "Sélectionnez ou ajoutez un profil.").foregroundStyle(.secondary)
+                Text(model.busy ? "Chargement…" : "Sélectionnez un profil.").foregroundStyle(.secondary)
             }
         }
-        .frame(minWidth: 940, minHeight: 710)
+        .frame(minWidth: 720, minHeight: 460)
         .toolbar {
             Button { newName = ""; newShared = true; adding = true } label: {
-                Label("Ajouter un profil", systemImage: "plus")
-            }.disabled(model.busy)
-            Button { model.refresh() } label: { Label("Actualiser", systemImage: "arrow.clockwise") }.disabled(model.busy)
+                Label("Nouveau profil", systemImage: "plus")
+            }.disabled(model.busy).help("Nouveau profil")
         }
         .safeAreaInset(edge: .bottom) {
-            HStack {
-                if model.busy { ProgressView().controlSize(.small) }
-                Text(model.busy ? "Opération en cours…" : model.notice).font(.caption).textSelection(.enabled)
-                Spacer()
-            }.padding(.horizontal, 16).padding(.vertical, 9).background(.bar)
+            if model.busy || !model.notice.isEmpty {
+                HStack {
+                    if model.busy { ProgressView().controlSize(.small) }
+                    Text(model.busy ? "Opération en cours…" : model.notice).font(.caption).textSelection(.enabled)
+                    Spacer()
+                }.padding(.horizontal, 16).padding(.vertical, 8).background(.bar)
+            }
         }
         .onAppear { model.refresh() }
         .onChange(of: model.selection) { _, _ in model.notice = "" }
@@ -221,90 +157,146 @@ struct ProfilesView: View {
         .alert("Opération impossible", isPresented: Binding(get: { model.error != nil }, set: { if !$0 { model.error = nil } })) {
             Button("OK") { model.error = nil }
         } message: { Text(model.error ?? "") }
-        .alert("Réactiver la configuration commune ?", isPresented: $confirmSharing) {
+        .alert("Synchroniser avec Personnel ?", isPresented: $confirmSharing) {
             Button("Annuler", role: .cancel) {}
-            Button("Réactiver") {
-                if let profile = selected { model.change(["configure", profile.id], message: "Configuration commune activée pour le prochain lancement.") }
+            Button("Synchroniser") {
+                if let profile = selected { model.change(["configure", profile.id], message: "Synchronisé à la prochaine ouverture.") }
             }
-        } message: { Text("À la prochaine synchronisation, les réglages et fichiers communs du profil remplaceront vos modifications locales. La connexion et les plugins seront conservés.") }
-        .sheet(isPresented: $adding) {
-            VStack(alignment: .leading, spacing: 20) {
-                Text("Ajouter un profil Claude").font(.title2.bold())
-                Text("Un nouveau dossier et un raccourci seront créés. Vous vous connecterez ensuite au compte souhaité dans Claude.").foregroundStyle(.secondary)
-                TextField("Nom, par exemple travail ou client", text: $newName)
-                    .textFieldStyle(.roundedBorder).accessibilityLabel("Nom du profil")
-                Text("Lettres minuscules, chiffres et tirets ; commencez par une lettre. 31 caractères maximum.")
-                    .font(.caption).foregroundStyle(.secondary)
-                Toggle("Actualiser la configuration depuis le profil personnel", isOn: $newShared)
-                sharingSummary(shared: newShared)
-                if validName {
-                    Text("Code : ~/.claude-\(newName)\nDesktop : ~/Library/Application Support/claude-\(newName)")
-                        .font(.system(.caption, design: .monospaced)).textSelection(.enabled)
-                }
-                HStack {
+        } message: { Text("À la prochaine ouverture, les réglages, skills et MCP de Personnel remplaceront ceux de ce profil. Le compte et les plugins sont conservés.") }
+        .sheet(isPresented: $adding) { newProfileSheet }
+    }
+
+    private func detail(_ profile: Profile) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                HStack(alignment: .center) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(profile.name).font(.largeTitle.bold())
+                        HStack(spacing: 6) {
+                            Circle().fill(profile.pid == nil ? Color.secondary.opacity(0.4) : .green).frame(width: 7, height: 7)
+                            Text(profile.pid == nil ? "Fermé" : "Ouvert").foregroundStyle(.secondary)
+                        }
+                    }
                     Spacer()
-                    Button("Annuler") { adding = false }.keyboardShortcut(.cancelAction)
-                    Button("Créer le profil") {
-                        let name = newName
-                        adding = false
-                        model.change(["install", name] + (newShared ? [] : ["--independent"]), message: "Profil \(name.uppercased()) créé. Ouvrez Claude pour vous connecter.", select: name)
-                    }.buttonStyle(.borderedProminent).keyboardShortcut(.defaultAction)
-                        .disabled(!validName || model.profiles.contains { $0.id == newName })
+                    Button(profile.pid == nil ? "Ouvrir Claude" : "Afficher Claude") { model.launch(profile) }
+                        .buttonStyle(.borderedProminent).controlSize(.large)
                 }
-                if model.profiles.contains(where: { $0.id == newName }) { Text("Ce profil existe déjà.").foregroundStyle(.red) }
-            }.padding(28).frame(width: 620)
+                if profile.managed { syncCard(profile) } else { sourceCard }
+                VStack(alignment: .leading, spacing: 8) {
+                    caption("Dans le Finder")
+                    HStack(spacing: 18) {
+                        place("Dossier Code", profile.code)
+                        place("Données Desktop", profile.data)
+                        place(profile.managed ? "Raccourci" : "Application", profile.app, reveal: true)
+                    }
+                }
+            }
+            .padding(28).frame(maxWidth: 640, alignment: .leading)
+        }.disabled(model.busy)
+    }
+
+    private func syncCard(_ profile: Profile) -> some View {
+        GroupBox {
+            VStack(alignment: .leading, spacing: 16) {
+                switchRow("Synchroniser avec Personnel",
+                          profile.shared ? "Mis à jour à chaque ouverture de Claude." : "Ce profil garde sa propre configuration.",
+                          isOn: Binding(get: { profile.shared }, set: { shared in
+                              if shared { confirmSharing = true }
+                              else { model.change(["configure", profile.id, "--independent"], message: "Synchronisation désactivée.") }
+                          }))
+                Divider()
+                sharingSummary(shared: profile.shared)
+                HStack(spacing: 18) {
+                    Button("Modifier le commun dans Personnel") { model.selection = "__personal__" }
+                    if !profile.shared {
+                        Button("Réglages de ce profil") { model.open(profile.code + "/settings.json", edit: true) }
+                    }
+                }.buttonStyle(.link)
+            }.padding(10)
         }
+    }
+
+    private var sourceCard: some View {
+        GroupBox {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Configuration commune").font(.headline)
+                Text("Les profils synchronisés la reprennent à leur prochaine ouverture.")
+                    .font(.callout).foregroundStyle(.secondary)
+                HStack {
+                    Button("Instructions") { model.open(personalCode + "/CLAUDE.md", edit: true) }
+                    Button("Réglages") { model.open(personalCode + "/settings.json", edit: true) }
+                }
+            }.frame(maxWidth: .infinity, alignment: .leading).padding(10)
+        }
+    }
+
+    private var newProfileSheet: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Text("Nouveau profil").font(.title2.bold())
+            VStack(alignment: .leading, spacing: 6) {
+                TextField("Nom, par exemple travail", text: $newName)
+                    .textFieldStyle(.roundedBorder).accessibilityLabel("Nom du profil")
+                Text(nameTaken ? "Ce profil existe déjà." : "Minuscules, chiffres et tirets.")
+                    .font(.caption).foregroundStyle(nameTaken ? Color.red : .secondary)
+            }
+            switchRow("Synchroniser avec Personnel",
+                      newShared ? "Mis à jour à chaque ouverture de Claude." : "Ce profil gardera sa propre configuration.",
+                      isOn: $newShared)
+            sharingSummary(shared: newShared)
+            HStack {
+                Spacer()
+                Button("Annuler") { adding = false }.keyboardShortcut(.cancelAction)
+                Button("Créer") {
+                    let name = newName
+                    adding = false
+                    model.change(["install", name] + (newShared ? [] : ["--independent"]),
+                                 message: "Profil \(name.uppercased()) créé. Ouvrez Claude pour connecter le compte.", select: name)
+                }.buttonStyle(.borderedProminent).keyboardShortcut(.defaultAction).disabled(!validName || nameTaken)
+            }
+        }.padding(24).frame(width: 440)
     }
 
     // Mirrors sync() in claude-profiles.py: keep both lists in step with what it copies and skips.
     private func sharingSummary(shared: Bool) -> some View {
-        HStack(alignment: .top, spacing: 24) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Commun avec Personnel").font(.subheadline.bold())
-                bullet("Instructions (CLAUDE.md)")
-                if shared {
-                    bullet("Réglages, hooks et barre d’état")
-                    bullet("Skills, agents, commandes, règles et styles")
-                    bullet("Serveurs MCP globaux")
-                }
-                Text(shared
-                     ? "Modifiez-les dans Personnel. Les instructions s’appliquent tout de suite, le reste au prochain lancement de ce profil."
-                     : "Modifiez-les dans Personnel : elles s’appliquent tout de suite.")
-                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            }.frame(maxWidth: .infinity, alignment: .leading)
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Propre à ce profil").font(.subheadline.bold())
-                bullet("Compte Claude connecté")
-                bullet("Plugins et marketplaces")
-                bullet("Historique, sessions et mémoire")
-                bullet("MCP activés et dossiers approuvés, par projet")
-                bullet("Clés et jetons d’API (jamais copiés)")
-                if !shared {
-                    bullet("Réglages, skills et serveurs MCP : repris de Personnel à la création, puis indépendants")
-                }
-            }.frame(maxWidth: .infinity, alignment: .leading)
+        let synced = ["Réglages", "Skills et commandes", "Serveurs MCP"]
+        return HStack(alignment: .top, spacing: 24) {
+            column("Commun", ["Instructions"] + (shared ? synced : []))
+            column("Propre à ce profil", ["Compte Claude", "Plugins", "Historique", "Clés d’API"] + (shared ? [] : synced))
         }
     }
 
-    private func bullet(_ text: String) -> some View {
-        Label { Text(text).fixedSize(horizontal: false, vertical: true) } icon: { Text("•") }
-            .font(.callout).foregroundStyle(.secondary)
+    private func column(_ title: String, _ items: [String]) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            caption(title)
+            ForEach(items, id: \.self) { Text($0) }
+        }.frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func pathRow(_ title: String, _ path: String, reveal: Bool = false) -> some View {
+    private func caption(_ text: String) -> some View {
+        Text(text).font(.caption.weight(.semibold)).foregroundStyle(.secondary).textCase(.uppercase)
+    }
+
+    private func switchRow(_ title: String, _ detail: String, isOn: Binding<Bool>) -> some View {
         HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading, spacing: 5) {
-                Text(title).font(.subheadline.bold())
-                Text(path).font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary).textSelection(.enabled)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                Text(detail).font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
-            Button("Copier") { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(path, forType: .string) }
-                .help("Copier le chemin de \(title)")
-            Button("Finder") {
-                if reveal { NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)]) }
-                else { model.open(path) }
-            }.help("Afficher \(title) dans le Finder")
+            Toggle(title, isOn: isOn).toggleStyle(.switch).labelsHidden()
         }
+    }
+
+    private func place(_ title: String, _ path: String, reveal: Bool = false) -> some View {
+        Button {
+            if reveal { NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)]) }
+            else { model.open(path) }
+        } label: { Label(title, systemImage: "folder") }
+            .buttonStyle(.link)
+            .help(path)
+            .contextMenu {
+                Button("Copier le chemin") { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(path, forType: .string) }
+            }
     }
 }
 
