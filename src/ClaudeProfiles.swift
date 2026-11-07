@@ -154,10 +154,6 @@ struct ProfilesView: View {
                                             if shared { confirmSharing = true }
                                             else { model.change(["configure", profile.id, "--independent"], message: "Synchronisation désactivée. Les fichiers actuels sont conservés.") }
                                         }))
-                                    Text(profile.shared
-                                         ? "Les réglages, instructions, skills et définitions MCP sont copiés depuis ~/.claude au démarrage d’une nouvelle instance. Connexion, historique et installations de plugins restent propres à ce profil."
-                                         : "Les copies actuelles ne seront plus actualisées. Les hooks copiés peuvent toujours référencer des scripts du profil personnel.")
-                                        .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                                     if profile.shared {
                                         Button("Synchroniser maintenant") {
                                             model.change(["sync", profile.id], message: "Configuration commune synchronisée.")
@@ -171,11 +167,19 @@ struct ProfilesView: View {
                                 let config = profile.shared ? personalCode : profile.code
                                 HStack {
                                     Button(profile.shared ? "Réglages communs" : "Réglages JSON") { model.open(config + "/settings.json", edit: true) }
-                                    Button("Instructions CLAUDE.md") { model.open(config + "/CLAUDE.md", edit: true) }
+                                    Button("Instructions communes (CLAUDE.md)") { model.open(personalCode + "/CLAUDE.md", edit: true) }
                                     Button("Dossier de configuration") { model.open(config) }
                                 }
                                 if profile.shared { Text("Éditez la source commune ici : les copies du profil sont écrasées lors de la synchronisation.").font(.caption).foregroundStyle(.secondary) }
                             }.frame(maxWidth: .infinity, alignment: .leading).padding(10)
+                        }
+                        if profile.managed {
+                            GroupBox {
+                                VStack(alignment: .leading, spacing: 12) {
+                                    Text("Partagé ou propre à ce profil").font(.headline)
+                                    sharingSummary(shared: profile.shared)
+                                }.frame(maxWidth: .infinity, alignment: .leading).padding(10)
+                            }
                         }
                         GroupBox {
                             VStack(alignment: .leading, spacing: 16) {
@@ -232,8 +236,7 @@ struct ProfilesView: View {
                 Text("Lettres minuscules, chiffres et tirets ; commencez par une lettre. 31 caractères maximum.")
                     .font(.caption).foregroundStyle(.secondary)
                 Toggle("Actualiser la configuration depuis le profil personnel", isOn: $newShared)
-                Text("Une copie initiale est créée dans les deux modes. Les identifiants Claude et les plugins installés ne sont pas copiés. Les définitions MCP réutilisent leurs éventuels identifiants de service.")
-                    .font(.caption).foregroundStyle(.secondary)
+                sharingSummary(shared: newShared)
                 if validName {
                     Text("Code : ~/.claude-\(newName)\nDesktop : ~/Library/Application Support/claude-\(newName)")
                         .font(.system(.caption, design: .monospaced)).textSelection(.enabled)
@@ -249,8 +252,36 @@ struct ProfilesView: View {
                         .disabled(!validName || model.profiles.contains { $0.id == newName })
                 }
                 if model.profiles.contains(where: { $0.id == newName }) { Text("Ce profil existe déjà.").foregroundStyle(.red) }
-            }.padding(28).frame(width: 520)
+            }.padding(28).frame(width: 620)
         }
+    }
+
+    // Mirrors sync() in claude-profiles.py: keep both lists in step with what it copies and skips.
+    private func sharingSummary(shared: Bool) -> some View {
+        HStack(alignment: .top, spacing: 24) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(shared ? "Copié depuis ~/.claude à chaque lancement" : "Copié une seule fois, à la création")
+                    .font(.subheadline.bold())
+                bullet("Réglages : settings.json et settings.local.json, hooks et barre d’état compris")
+                bullet("Skills, agents, commandes, règles et styles (ajouts seulement : un fichier retiré de ~/.claude reste dans le profil)")
+                bullet("Serveurs MCP globaux de ~/.claude.json, avec leurs éventuels identifiants de service")
+                Text("Lu directement, jamais copié").font(.subheadline.bold()).padding(.top, 4)
+                bullet("Instructions ~/.claude/CLAUDE.md, pour tout projet situé dans votre dossier personnel")
+            }.frame(maxWidth: .infinity, alignment: .leading)
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Propre à ce profil").font(.subheadline.bold())
+                bullet("Compte Claude connecté et données de l’application Desktop")
+                bullet("Plugins et marketplaces installés")
+                bullet("Historique, sessions et mémoire des projets")
+                bullet("Choix par projet : serveurs MCP activés, dossiers approuvés")
+                bullet("Secrets jamais copiés : apiKeyHelper et variables contenant TOKEN, SECRET, PASSWORD, API_KEY ou AUTH")
+            }.frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private func bullet(_ text: String) -> some View {
+        Label { Text(text).fixedSize(horizontal: false, vertical: true) } icon: { Text("•") }
+            .font(.callout).foregroundStyle(.secondary)
     }
 
     private func pathRow(_ title: String, _ path: String, reveal: Bool = false) -> some View {
