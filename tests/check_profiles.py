@@ -63,6 +63,13 @@ with patch.object(Path, 'home', return_value=home), patch.object(p, 'ROOT', home
     p.sync(code)
     assert json.loads((code / 'settings.json').read_text())['enabledPlugins'] == {'cla-only': True}
     assert json.loads((code / '.claude.json').read_text())['oauthAccount'] == {'email': 'cla'}
+    agents_md = lambda: json.loads((code / 'settings.json').read_text())['pluginConfigs']['cc-plugin-agents-md@builtin']['options']['instructionFiles']
+    assert agents_md() == 'claude-md-and-agents-md', 'AGENTS.md must load despite ~/.claude/CLAUDE.md'
+    settings = json.loads((code / 'settings.json').read_text())
+    settings['pluginConfigs']['cc-plugin-agents-md@builtin']['options']['instructionFiles'] = 'claude-md'
+    (code / 'settings.json').write_text(json.dumps(settings))
+    p.sync(code)
+    assert agents_md() == 'claude-md', 'A profile choice must survive the sync'
     with patch.object(p.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, f'111 {p.APP}/Contents/MacOS/Claude\n123 {p.APP}/Contents/MacOS/Claude --user-data-dir={data}-other\n456 {p.APP}/Contents/MacOS/Claude --user-data-dir={data}\n')):
         assert p.processes(data) == [456]
         assert p.processes(None) == [111]

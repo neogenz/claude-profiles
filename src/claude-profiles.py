@@ -60,10 +60,15 @@ def sync(code):
             continue
         settings=read_json(source/name)
         local=read_json(code/name)
-        for key in ('enabledPlugins','extraKnownMarketplaces'):
+        for key in ('enabledPlugins','extraKnownMarketplaces','pluginConfigs'):
             settings.pop(key,None)
             if key in local:
                 settings[key]=local[key]
+        if name=='settings.json':
+            # ~/.claude/CLAUDE.md is a parent-folder CLAUDE.md for every project here, which turns off
+            # the default AGENTS.md loading; load both unless the profile chose otherwise.
+            agents_md=settings.setdefault('pluginConfigs',{}).setdefault('cc-plugin-agents-md@builtin',{})
+            agents_md.setdefault('options',{}).setdefault('instructionFiles','claude-md-and-agents-md')
         # Never propagate authentication environment variables or helpers.
         settings.pop('apiKeyHelper',None)
         settings['env']={k:v for k,v in settings.get('env',{}).items()
