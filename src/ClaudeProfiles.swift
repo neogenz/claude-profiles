@@ -106,6 +106,7 @@ struct ProfilesView: View {
     @State private var newName = ""
     @State private var newShared = true
     @State private var confirmSharing = false
+    @State private var helping = false
     private var selected: Profile? { model.profiles.first { $0.id == model.selection } }
     private var validName: Bool { newName.range(of: "^[a-z][a-z0-9-]{0,30}$", options: .regularExpression) != nil }
     private var nameTaken: Bool { model.profiles.contains { $0.id == newName } }
@@ -138,6 +139,9 @@ struct ProfilesView: View {
         }
         .frame(minWidth: 720, minHeight: 460)
         .toolbar {
+            Button { helping = true } label: {
+                Label("Aide", systemImage: "questionmark.circle")
+            }.help("Installer des skills")
             Button { newName = ""; newShared = true; adding = true } label: {
                 Label("Nouveau profil", systemImage: "plus")
             }.disabled(model.busy).help("Nouveau profil")
@@ -164,6 +168,7 @@ struct ProfilesView: View {
             }
         } message: { Text("À la prochaine ouverture, les réglages, skills et MCP de Personnel remplaceront ceux de ce profil. Le compte et les plugins sont conservés.") }
         .sheet(isPresented: $adding) { newProfileSheet }
+        .sheet(isPresented: $helping) { skillsHelpSheet }
     }
 
     private func detail(_ profile: Profile) -> some View {
@@ -255,6 +260,50 @@ struct ProfilesView: View {
                 }.buttonStyle(.borderedProminent).keyboardShortcut(.defaultAction).disabled(!validName || nameTaken)
             }
         }.padding(24).frame(width: 440)
+    }
+
+    // Mirrors the skills CLI: its global folder is $CLAUDE_CONFIG_DIR/skills, else ~/.claude/skills.
+    private var skillsHelpSheet: some View {
+        let managed = model.profiles.filter(\.managed)
+        return VStack(alignment: .leading, spacing: 18) {
+            Text("Installer des skills").font(.title2.bold())
+            Text("Une installation « globale » va dans le profil de la session qui lance la commande : une session Claude ouverte dans un profil installe dans ce profil. Choisissez le profil avec CLAUDE_CONFIG_DIR.")
+                .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 10) {
+                caption("Pour tous les profils")
+                command("CLAUDE_CONFIG_DIR= npx skills add <source> -g")
+                Text("Installé dans Personnel, puis copié dans chaque profil synchronisé à sa prochaine ouverture.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            if !managed.isEmpty {
+                VStack(alignment: .leading, spacing: 10) {
+                    caption("Pour un seul profil")
+                    ForEach(managed) { profile in
+                        command("CLAUDE_CONFIG_DIR=" + (profile.code as NSString).abbreviatingWithTildeInPath + " npx skills add <source> -g")
+                    }
+                    Text("Pour plusieurs profils sans Personnel, lancez la commande de chacun.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            HStack {
+                Spacer()
+                Button("Fermer") { helping = false }.keyboardShortcut(.defaultAction)
+            }
+        }.padding(24).frame(width: 560)
+    }
+
+    private func command(_ text: String) -> some View {
+        HStack(spacing: 8) {
+            Text(text).font(.system(.callout, design: .monospaced)).textSelection(.enabled)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 8)
+            Button {
+                NSPasteboard.general.clearContents(); NSPasteboard.general.setString(text, forType: .string)
+                model.notice = "Commande copiée."
+            } label: { Image(systemName: "doc.on.doc") }.buttonStyle(.borderless).help("Copier la commande")
+        }
+        .padding(.horizontal, 10).padding(.vertical, 6)
+        .background(RoundedRectangle(cornerRadius: 6).fill(Color.secondary.opacity(0.1)))
     }
 
     // Mirrors sync() in claude-profiles.py: keep both lists in step with what it copies and skips.
