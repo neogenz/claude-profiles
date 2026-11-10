@@ -70,6 +70,17 @@ with patch.object(Path, 'home', return_value=home), patch.object(p, 'ROOT', home
     (code / 'settings.json').write_text(json.dumps(settings))
     p.sync(code)
     assert agents_md() == 'claude-md', 'A profile choice must survive the sync'
+    # A skill installer can link a profile skill to the same shared folder as the personal one.
+    shared = home / '.agents/skills/example-skill'
+    shared.mkdir(parents=True)
+    (shared / 'SKILL.md').write_text('skill')
+    (source / 'skills').mkdir()
+    (source / 'skills/example-skill').symlink_to(shared)
+    (code / 'skills').mkdir()
+    (code / 'skills/example-skill').symlink_to(shared)
+    p.sync(code)
+    assert not (code / 'skills/example-skill').is_symlink() and (code / 'skills/example-skill/SKILL.md').read_text() == 'skill'
+    assert shared.is_dir() and (shared / 'SKILL.md').read_text() == 'skill'
     with patch.object(p.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, f'111 {p.APP}/Contents/MacOS/Claude\n123 {p.APP}/Contents/MacOS/Claude --user-data-dir={data}-other\n456 {p.APP}/Contents/MacOS/Claude --user-data-dir={data}\n')):
         assert p.processes(data) == [456]
         assert p.processes(None) == [111]

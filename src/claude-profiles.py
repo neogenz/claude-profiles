@@ -90,12 +90,14 @@ def sync(code):
         if (source/name).is_dir():
             dest=code/name
             if dest.is_symlink(): raise ValueError('Lien inattendu : '+str(dest))
-            # Reject destination links so syncing cannot write back into the original profile.
+            # Copying through a destination link would write into its target (often the original
+            # profile), so drop links the copy would replace; removing a link never touches its target.
             if dest.exists():
                 for base, dirs, files in os.walk(dest):
                     for entry in dirs+files:
-                        if (Path(base)/entry).is_symlink():
-                            raise ValueError('Lien inattendu : '+str(Path(base)/entry))
+                        link=Path(base)/entry
+                        if link.is_symlink() and os.path.lexists(source/name/link.relative_to(dest)):
+                            link.unlink()
             shutil.copytree(source/name,dest,dirs_exist_ok=True,symlinks=False,
                 ignore=shutil.ignore_patterns('.git','node_modules','__pycache__','.DS_Store'))
     mixed=read_json(code/'.claude.json')
